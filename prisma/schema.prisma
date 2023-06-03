@@ -1,0 +1,657 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator zod {
+  provider           = "npx zod-prisma-types"
+  addIncludeType     = "false"
+  createInputTypes   = "false"
+  useMultipleFiles   = "true"
+  createPartialTypes = "true"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Example {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model actuator_function_instance_channel {
+  id                          Int                       @id(map: "actuator_function_instance_channel_pk") @default(autoincrement())
+  device_function_instance_id Int?
+  actuator_function_line_id   Int?
+  channel                     Int
+  version_number              Int
+  actuator_function_line      actuator_function_line?   @relation(fields: [actuator_function_line_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "actuator_function_instance_channel_actuator_function_line_id_fk")
+  device_function_instance    device_function_instance? @relation(fields: [device_function_instance_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "actuator_function_instance_channel_device_function_instance_id_")
+}
+
+model actuator_function_line {
+  id                                 Int                                  @id(map: "actuator_function_line_pk") @default(autoincrement())
+  actuator_specification_id          Int
+  device_function_id                 Int
+  quantity                           Int
+  version_number                     Int
+  actuator_function_instance_channel actuator_function_instance_channel[]
+  actuator_specification             actuator_specification               @relation(fields: [actuator_specification_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "actuator_function_line_actuator_specification_id_fk")
+  device_function                    device_function                      @relation(fields: [device_function_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "actuator_function_line_device_function_id_fk")
+
+  @@unique([actuator_specification_id, device_function_id], map: "actuator_function_line_uindex")
+}
+
+model actuator_specification {
+  id                                          Int                                           @id(map: "actuator_specification_pk") @default(autoincrement())
+  manufacturer                                String                                        @db.VarChar
+  type                                        String                                        @db.VarChar
+  model                                       String                                        @db.VarChar
+  voltage                                     Float
+  current                                     Float
+  levels                                      Int
+  phases                                      Int
+  version_number                              Int
+  actuator_function_line                      actuator_function_line[]
+  device_specification_actuator_specification device_specification_actuator_specification[]
+}
+
+model address {
+  id        Int        @id(map: "address_pk") @default(autoincrement())
+  line1     String     @db.VarChar
+  line2     String     @db.VarChar
+  post_code String     @db.VarChar
+  city      String     @db.VarChar
+  country   String     @db.VarChar
+  building  building[]
+  person    person[]
+}
+
+model area {
+  id                                   Int                                    @id(map: "area_pk") @default(autoincrement())
+  name                                 String                                 @db.VarChar
+  area_status_id                       Int
+  version_number                       Int
+  area_status                          area_status                            @relation(fields: [area_status_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "area_area_status_id_fk")
+  area_device_function_instance_device area_device_function_instance_device[]
+  person_area                          person_area[]
+}
+
+model area_device_function_instance_device {
+  id                                 Int                             @id(map: "area_device_function_instance_pk") @default(autoincrement())
+  area_id                            Int
+  device_function_instance_device_id Int
+  version_number                     Int
+  area                               area                            @relation(fields: [area_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "area_device_function_instance_area_id_fk")
+  device_function_instance_device    device_function_instance_device @relation(fields: [device_function_instance_device_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "area_device_function_instance_device_function_instance_device_i")
+}
+
+model area_status {
+  id          Int    @id(map: "area_status_pk") @default(autoincrement())
+  status      String @db.VarChar
+  description String @db.VarChar
+  area        area[]
+}
+
+model building {
+  id          Int       @id(map: "building_pk") @default(autoincrement())
+  customer_id Int?
+  address_id  Int?
+  site_name   String    @db.VarChar
+  latitude    Float
+  longitude   Float
+  address     address?  @relation(fields: [address_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "building_address_id_fk")
+  customer    customer? @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "building_customer_id_fk")
+}
+
+model customer {
+  id                    Int        @id(map: "customer_pk") @default(autoincrement())
+  company_name          String     @db.VarChar
+  contact_first_name    String     @db.VarChar
+  contact_last_name     String     @db.VarChar
+  contact_number        String     @db.VarChar
+  contact_email_address String     @db.VarChar
+  building              building[]
+}
+
+model device {
+  id                              Int                               @id(map: "device_pk") @default(autoincrement())
+  building_uuid                   String                            @db.VarChar
+  device_role_id                  Int
+  mac_address                     String                            @unique(map: "device_mac_address_uindex") @db.VarChar
+  access_token                    String                            @unique(map: "device_access_token_uindex") @db.VarChar
+  device_uuid                     String                            @db.VarChar
+  customer_uuid                   String                            @db.VarChar
+  device_name                     String                            @db.VarChar
+  device_role                     device_role                       @relation(fields: [device_role_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_device_role_id_fk")
+  device_function_instance_device device_function_instance_device[]
+  device_mode                     device_mode[]
+  device_rule                     device_rule[]
+  device_sense                    device_sense[]
+}
+
+model device_database_column_name {
+  id                              Int                               @id(map: "device_database_column_name_pk") @default(autoincrement())
+  firmware_column_name            String                            @unique(map: "device_database_column_name_firmware_column_name_uindex") @db.VarChar
+  display_column_name             String                            @unique(map: "device_database_column_name_display_column_name_uindex") @db.VarChar
+  value                           Int                               @unique(map: "device_database_column_name_value_uindex")
+  device_role_database_definition device_role_database_definition[]
+}
+
+model device_database_column_type {
+  id                              Int                               @id(map: "device_database_column_type_pk") @default(autoincrement())
+  firmware_column_type            String                            @unique(map: "device_database_column_type_firmware_column_type_uindex") @db.VarChar
+  display_column_type             String                            @unique(map: "device_database_column_type_display_column_type_uindex") @db.VarChar
+  value                           Int                               @unique(map: "device_database_column_type_value_uindex")
+  device_role_database_definition device_role_database_definition[]
+}
+
+model device_event {
+  id          Int    @id(map: "device_event_pk") @default(autoincrement())
+  event_type  String @db.VarChar
+  mac_address String @db.VarChar
+  channel     Int?
+  type        Int?
+  level       Int?
+  field       Int?
+  quantity    Int?
+  value       Int?
+}
+
+model device_function {
+  id                       Int                        @id(map: "device_function_pk") @default(autoincrement())
+  name                     String                     @db.VarChar
+  version_number           Int
+  actuator_function_line   actuator_function_line[]
+  device_function_instance device_function_instance[]
+  sensor_function_line     sensor_function_line[]
+}
+
+model device_function_instance {
+  id                                 Int                                  @id(map: "device_function_instance_pk") @default(autoincrement())
+  device_function_id                 Int
+  device_role_id                     Int
+  name                               String                               @db.VarChar
+  version_number                     Int
+  actuator_function_instance_channel actuator_function_instance_channel[]
+  device_function                    device_function                      @relation(fields: [device_function_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_function_instance_device_function_id_fk")
+  device_role                        device_role                          @relation(fields: [device_role_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_function_instance_device_role_id_fk")
+  device_function_instance_device    device_function_instance_device[]
+  sensor_function_instance_channel   sensor_function_instance_channel[]
+}
+
+model device_function_instance_device {
+  id                                   Int                                    @id(map: "device_device_function_instance_pk") @default(autoincrement())
+  device_id                            Int
+  device_function_instance_id          Int
+  is_in_use                            Boolean?
+  area_device_function_instance_device area_device_function_instance_device[]
+  device_function_instance             device_function_instance               @relation(fields: [device_function_instance_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_device_function_instance_device_function_instance_id_fk")
+  device                               device                                 @relation(fields: [device_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_device_function_instance_device_id_fk")
+
+  @@unique([device_id, device_function_instance_id], map: "device_function_instance_device_uindex")
+}
+
+model device_mode {
+  id        Int    @id @default(autoincrement())
+  device_id Int
+  mode      String @db.VarChar
+  device    device @relation(fields: [device_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_mode_device_id_fk")
+}
+
+model device_role {
+  id                              Int                               @id(map: "device_role_pk") @default(autoincrement())
+  device_specification_id         Int?
+  name                            String                            @db.VarChar
+  channels                        Int?
+  version_number                  Int?
+  device                          device[]
+  device_function_instance        device_function_instance[]
+  device_specification            device_specification?             @relation(fields: [device_specification_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_role_device_specification_id_fk")
+  device_role_database_definition device_role_database_definition[]
+  device_role_mode                device_role_mode[]
+  device_role_rule                device_role_rule[]
+  device_role_sense               device_role_sense[]
+}
+
+model device_role_database_definition {
+  id                             Int                         @id(map: "device_role_database_pk") @default(autoincrement())
+  device_role_id                 Int
+  device_database_column_name_id Int
+  device_database_column_type_id Int
+  size                           Int
+  resource_id                    Int?
+  version_number                 Int
+  device_database_column_name    device_database_column_name @relation(fields: [device_database_column_name_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_role_database_definition_device_database_col_name_id_fk")
+  device_database_column_type    device_database_column_type @relation(fields: [device_database_column_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_role_database_definition_device_database_col_type_id_fk")
+  device_role                    device_role                 @relation(fields: [device_role_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_role_database_definition_device_role_id_fk")
+  resource                       resource?                   @relation(fields: [resource_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_role_database_definition_resource_id_fk")
+}
+
+model device_role_mode {
+  id             Int         @id @default(autoincrement())
+  device_role_id Int
+  mode           String      @db.VarChar
+  device_role    device_role @relation(fields: [device_role_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_role_mode_device_role_id_fk")
+}
+
+model device_role_rule {
+  id             Int         @id @default(autoincrement())
+  device_role_id Int
+  rule           String      @db.VarChar
+  device_role    device_role @relation(fields: [device_role_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_role_rule_device_role_id_fk")
+}
+
+model device_role_sense {
+  id             Int         @id @default(autoincrement())
+  device_role_id Int
+  sense          String      @db.VarChar
+  device_role    device_role @relation(fields: [device_role_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_role_sense_device_role_id_fk")
+}
+
+model device_rule {
+  id        Int    @id @default(autoincrement())
+  device_id Int
+  rule      String @db.VarChar
+  device    device @relation(fields: [device_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_rule_device_id_fk")
+}
+
+model device_sense {
+  id        Int    @id @default(autoincrement())
+  device_id Int
+  sense     String @db.VarChar
+  device    device @relation(fields: [device_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_sense_device_id_fk")
+}
+
+model device_specification {
+  id                                          Int                                           @id(map: "device_specification_pk") @default(autoincrement())
+  platform_specification_id                   Int?
+  name                                        String                                        @db.VarChar
+  manufacturer                                String                                        @db.VarChar
+  enclosure                                   String                                        @db.VarChar
+  model                                       String                                        @db.VarChar
+  version_number                              Int
+  supply_voltage                              Float
+  token                                       String                                        @unique(map: "device_specification_token_uindex") @db.Uuid
+  device_role                                 device_role[]
+  platform_specification                      platform_specification?                       @relation(fields: [platform_specification_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_specification_platform_specification_id_fk")
+  device_specification_actuator_specification device_specification_actuator_specification[]
+  device_specification_mode                   device_specification_mode[]
+  device_specification_rule                   device_specification_rule[]
+  device_specification_sense                  device_specification_sense[]
+  device_specification_sensor_specification   device_specification_sensor_specification[]
+}
+
+model device_specification_actuator_specification {
+  id                        Int                    @id(map: "device_specification_actuator_specification_pk") @default(autoincrement())
+  device_specification_id   Int
+  actuator_specification_id Int
+  quantity                  Int
+  actuator_specification    actuator_specification @relation(fields: [actuator_specification_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_specification_actuator_specification_actuator_specificat")
+  device_specification      device_specification   @relation(fields: [device_specification_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_specification_actuator_specification_device_specificatio")
+
+  @@unique([device_specification_id, actuator_specification_id], map: "device_specification_actuator_specification_uindex")
+}
+
+model device_specification_mode {
+  id                      Int                  @id @default(autoincrement())
+  device_specification_id Int
+  mode                    String               @db.VarChar
+  device_specification    device_specification @relation(fields: [device_specification_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_specification_mode_device_specification_id_fk")
+}
+
+model device_specification_rule {
+  id                      Int                  @id @default(autoincrement())
+  device_specification_id Int
+  rule                    String               @db.VarChar
+  device_specification    device_specification @relation(fields: [device_specification_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_specification_rule_device_specification_id_fk")
+}
+
+model device_specification_sense {
+  id                      Int                  @id @default(autoincrement())
+  device_specification_id Int
+  sense                   String               @db.VarChar
+  device_specification    device_specification @relation(fields: [device_specification_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_specification_sense_device_specification_id_fk")
+}
+
+model device_specification_sensor_specification {
+  id                      Int                  @id(map: "device_specification_sensor_specification_pk") @default(autoincrement())
+  device_specification_id Int
+  sensor_specification_id Int
+  quantity                Int
+  device_specification    device_specification @relation(fields: [device_specification_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_specification_sensor_specification_device_specification_")
+  sensor_specification    sensor_specification @relation(fields: [sensor_specification_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "device_specification_sensor_specification_sensor_specification_")
+
+  @@unique([device_specification_id, sensor_specification_id], map: "device_specification_sensor_specification_uindex")
+}
+
+model ident {
+  id          Int       @id(map: "ident_pk") @default(autoincrement())
+  mac_address String    @db.VarChar
+  tag_value   Int
+  channel     Int
+  not_before  DateTime  @db.Timestamptz(6)
+  not_after   DateTime? @db.Timestamptz(6)
+}
+
+model item {
+  id             Int              @id(map: "item_pk") @default(autoincrement())
+  item           String           @db.VarChar
+  room_type_item room_type_item[]
+}
+
+model period {
+  id                 Int                  @id(map: "period_pk") @default(autoincrement())
+  name               String               @unique(map: "period_name_uindex") @db.VarChar
+  description        String               @db.VarChar
+  service_allocation service_allocation[]
+}
+
+model person {
+  id                        Int                         @id(map: "person_pk") @default(autoincrement())
+  tag_id                    Int
+  person_type_id            Int
+  person_status_id          Int
+  address_id                Int?
+  first_name                String                      @db.VarChar
+  last_name                 String                      @db.VarChar
+  date_of_birth             DateTime                    @db.Timestamptz(6)
+  email_address             String                      @db.VarChar
+  employer                  String?                     @db.VarChar
+  start_date                DateTime                    @db.Timestamptz(6)
+  end_date                  DateTime                    @db.Timestamptz(6)
+  address                   address?                    @relation(fields: [address_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "person_address_id_fk")
+  person_status             person_status               @relation(fields: [person_status_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "person_person_status_id_fk")
+  person_type               person_type                 @relation(fields: [person_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "person_person_type_id_fk")
+  tag                       tag                         @relation(fields: [tag_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "person_tag_id_fk")
+  person_area               person_area[]
+  person_room               person_room[]
+  person_service_allocation person_service_allocation[]
+  person_service_package    person_service_package[]
+}
+
+model person_area {
+  id        Int    @id(map: "person_area_pk") @default(autoincrement())
+  person_id Int
+  area_id   Int
+  area      area   @relation(fields: [area_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "person_area_area_id_fk")
+  person    person @relation(fields: [person_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "person_area_person_id_fk")
+}
+
+model person_room {
+  id        Int    @id(map: "person_room_pk") @default(autoincrement())
+  person_id Int
+  room_id   Int
+  person    person @relation(fields: [person_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "person_room_person_id_fk")
+  room      room   @relation(fields: [room_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "person_room_room_id_fk")
+}
+
+model person_service_allocation {
+  id                    Int                @id(map: "person_service_allocation_pk") @default(autoincrement())
+  person_id             Int
+  service_allocation_id Int
+  balance               Float
+  version_number        Int
+  next_update_time      DateTime?          @db.Timestamptz(6)
+  last_update_time      DateTime?          @db.Timestamptz(6)
+  person                person             @relation(fields: [person_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "person_service_allocation_person_id_fk")
+  service_allocation    service_allocation @relation(fields: [service_allocation_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "person_service_allocation_service_allocation_id_fk")
+}
+
+model person_service_package {
+  id                 Int             @id(map: "person_service_package_pk") @default(autoincrement())
+  person_id          Int
+  service_package_id Int
+  person             person          @relation(fields: [person_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "person_service_package_person_id_fk")
+  service_package    service_package @relation(fields: [service_package_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "person_service_package_service_package_id_fk")
+}
+
+model person_status {
+  id          Int      @id(map: "person_status_pk") @default(autoincrement())
+  status      String   @db.VarChar
+  description String   @db.VarChar
+  person      person[]
+}
+
+model person_type {
+  id     Int      @id(map: "person_type_pk") @default(autoincrement())
+  type   String   @db.VarChar
+  person person[]
+}
+
+model platform_specification {
+  id                   Int                    @id(map: "platform_specification_pk") @default(autoincrement())
+  platform             String                 @db.VarChar
+  mcu                  String                 @db.VarChar
+  cores                Int
+  flash_internal       Int
+  flash_external       Int
+  sram_internal        Int
+  sram_external        Int
+  clock_default        Int
+  clock_minimum        Int
+  clock_maximum        Int
+  wifi_a_ind           Boolean
+  wifi_b_ind           Boolean
+  wifi_g_ind           Boolean
+  wifi_n_ind           Boolean
+  supply_voltage       Float
+  version_number       Int
+  device_specification device_specification[]
+}
+
+model resource {
+  id                              Int                               @id(map: "resource_pk") @default(autoincrement())
+  resource_unit_id                Int
+  name                            String                            @db.VarChar
+  device_role_database_definition device_role_database_definition[]
+  resource_unit                   resource_unit                     @relation(fields: [resource_unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "resource_resource_unit_id_fk")
+  service_allocation              service_allocation[]
+}
+
+model resource_unit {
+  id          Int        @id(map: "resource_unit_pk") @default(autoincrement())
+  unit        String     @unique(map: "resource_unit_unit_uindex") @db.VarChar
+  description String     @db.VarChar
+  resource    resource[]
+}
+
+model room {
+  id                                   Int                                    @id @default(autoincrement())
+  room_type_id                         Int
+  building_uuid                        String                                 @db.VarChar
+  room_occupancy_id                    Int
+  room_status_id                       Int
+  floor                                Int
+  number                               Int
+  loft                                 Boolean
+  paraplegic                           Boolean
+  name                                 String?                                @db.VarChar
+  person_room                          person_room[]
+  room_occupancy                       room_occupancy                         @relation(fields: [room_occupancy_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "room_room_occupancy_id_fk")
+  room_status                          room_status                            @relation(fields: [room_status_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "room_room_status_id_fk")
+  room_type                            room_type                              @relation(fields: [room_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "room_room_type_id_fk")
+  room_comment                         room_comment[]
+  room_device_function_instance_device room_device_function_instance_device[]
+
+  @@unique([building_uuid, floor, number], map: "room_building_id_floor_number_uindex")
+}
+
+model room_comment {
+  id      Int    @id(map: "room_comment_pk") @default(autoincrement())
+  room_id Int
+  comment String @db.VarChar
+  room    room   @relation(fields: [room_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "room_comment_room_id_fk")
+}
+
+model room_device_function_instance_device {
+  id                                 Int  @id(map: "room_device_function_instance_pk") @default(autoincrement())
+  room_id                            Int
+  device_function_instance_device_id Int
+  room                               room @relation(fields: [room_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "room_device_function_instance_room_id_fk")
+}
+
+model room_occupancy {
+  id          Int    @id(map: "room_occupancy_type_pk") @default(autoincrement())
+  occupancy   String @db.VarChar
+  description String @db.VarChar
+  room        room[]
+}
+
+model room_status {
+  id          Int    @id(map: "room_status_pk") @default(autoincrement())
+  status      String @db.VarChar
+  description String @db.VarChar
+  room        room[]
+}
+
+model room_type {
+  id              Int               @id @default(autoincrement())
+  type            String            @db.VarChar
+  tier            Int
+  max_occupancy   Int
+  bedroom         Boolean
+  room            room[]
+  room_type_item  room_type_item[]
+  service_package service_package[]
+}
+
+model room_type_item {
+  id           Int       @id(map: "room_room_item_pk") @default(autoincrement())
+  room_type_id Int
+  item_id      Int
+  quantity     Int
+  item         item      @relation(fields: [item_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "room_type_item_item_id_fk")
+  room_type    room_type @relation(fields: [room_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "room_type_item_room_type_id_fk")
+}
+
+model sensor_function_instance_channel {
+  id                          Int                       @id(map: "sensor_function_instance_channel_pk") @default(autoincrement())
+  device_function_instance_id Int?
+  sensor_function_line_id     Int?
+  channel                     Int
+  version_number              Int
+  device_function_instance    device_function_instance? @relation(fields: [device_function_instance_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "sensor_function_instance_channel_device_function_instance_id_fk")
+  sensor_function_line        sensor_function_line?     @relation(fields: [sensor_function_line_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "sensor_function_instance_channel_sensor_function_line_id_fk")
+}
+
+model sensor_function_line {
+  id                               Int                                @id(map: "sensor_function_line_pk") @default(autoincrement())
+  sensor_specification_id          Int?
+  device_function_id               Int?
+  version_number                   Int
+  quantity                         Int
+  sensor_function_instance_channel sensor_function_instance_channel[]
+  device_function                  device_function?                   @relation(fields: [device_function_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "sensor_function_line_device_function_id_fk")
+  sensor_specification             sensor_specification?              @relation(fields: [sensor_specification_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "sensor_function_line_sensor_specification_id_fk")
+
+  @@unique([sensor_specification_id, device_function_id], map: "sensor_function_line_uindex")
+}
+
+model sensor_specification {
+  id                                        Int                                         @id(map: "sensor_specification_pk") @default(autoincrement())
+  manufacturer                              String                                      @db.VarChar
+  type                                      String                                      @db.VarChar
+  model                                     String                                      @db.VarChar
+  version_number                            Int
+  device_specification_sensor_specification device_specification_sensor_specification[]
+  sensor_function_line                      sensor_function_line[]
+}
+
+model service_allocation {
+  id                        Int                         @id(map: "service_allocation_pk") @default(autoincrement())
+  service_package_id        Int
+  resource_id               Int
+  period_id                 Int
+  allocation                Float
+  carry_over                Boolean
+  person_service_allocation person_service_allocation[]
+  period                    period                      @relation(fields: [period_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "service_allocation_period_id_fk")
+  resource                  resource                    @relation(fields: [resource_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "service_allocation_resource_id_fk")
+  service_package           service_package             @relation(fields: [service_package_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "service_allocation_service_package_id_fk")
+
+  @@unique([service_package_id, resource_id], map: "service_allocation_service_package_resource_id_uindex")
+}
+
+model service_package {
+  id                     Int                      @id(map: "service_package_pk") @default(autoincrement())
+  room_type_id           Int?
+  name                   String                   @db.VarChar
+  description            String                   @db.VarChar
+  person_service_package person_service_package[]
+  service_allocation     service_allocation[]
+  room_type              room_type?               @relation(fields: [room_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "service_package_room_type_id_fk")
+}
+
+model tag {
+  id              Int        @id(map: "tag_pk") @default(autoincrement())
+  tag_model_id    Int
+  tag_status_id   Int
+  activation_date DateTime   @db.Timestamptz(6)
+  tag_value       Int        @unique(map: "tag_tag_value_uindex")
+  person          person[]
+  tag_model       tag_model  @relation(fields: [tag_model_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tag_tag_model_id_fk")
+  tag_status      tag_status @relation(fields: [tag_status_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tag_tag_status_id_fk")
+}
+
+model tag_model {
+  id             Int    @id(map: "tag_model_pk") @default(autoincrement())
+  name           String @db.VarChar
+  model_number   String @db.VarChar
+  manufacturer   String @db.VarChar
+  version_number Int
+  tag            tag[]
+}
+
+model tag_status {
+  id          Int    @id(map: "tag_status_pk") @default(autoincrement())
+  status      String @db.VarChar
+  description String @db.VarChar
+  tag         tag[]
+}
